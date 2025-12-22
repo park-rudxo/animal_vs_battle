@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 동물 전투력 예측기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #111827;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .title-font {
+            font-family: 'Black Han+Sans', sans-serif;
+        }
+
+        .vs-text {
+            text-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        .animal-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .animal-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .animal-card img {
+            transition: transform 0.5s ease;
+        }
+
+        .animal-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .result-overlay {
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+        }
+
+        .stat-bar-bg {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .winner-glow {
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
+            border: 2px solid #22c55e;
+        }
+
+        .loser-grayscale {
+            filter: grayscale(100%);
+            opacity: 0.6;
+        }
+
+        /* 게이지 바 애니메이션 효과 */
+        .progress-bar-striped {
+            background-image: linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 헤더 -->
+    <header class="text-center mb-8 relative">
+        <div class="inline-block bg-indigo-600 text-xs font-bold px-2 py-1 rounded mb-2 tracking-widest">AI BATTLE
+            ANALYZER v3.1 (Secure)</div>
+        <h1
+            class="text-4xl md:text-5xl title-font text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2">
+            누가 이길까?
+        </h1>
+        <p class="text-gray-400 text-sm md:text-base">두 동물이 싸울 때 AI가 분석한 승률을 예측해보세요.</p>
+    </header>
+
+    <!-- 설정 모달 제거됨 (서버리스 아키텍처로 전환) -->
+
+    <!-- 점수판 -->
+    <div class="flex gap-8 mb-6 text-lg font-bold">
+        <div class="text-green-400"><i class="fas fa-check-circle mr-2"></i>정답: <span id="score">0</span></div>
+        <div class="text-red-400"><i class="fas fa-times-circle mr-2"></i>오답: <span id="wrong">0</span></div>
+    </div>
+
+    <!-- 메인 게임 영역 -->
+    <main class="w-full max-w-5xl relative flex flex-col md:flex-row items-center justify-between gap-4 md:gap-8">
+
+        <!-- 왼쪽 동물 -->
+        <div id="card-left"
+            class="animal-card w-full md:w-5/12 aspect-square bg-gray-800 rounded-2xl overflow-hidden border border-gray-700 group"
+            onclick="selectWinner('left')">
+            <img id="img-left" src="" alt="Left Animal" class="w-full h-full object-cover bg-gray-700">
+            <div class="absolute bottom-0 left-0 right-0 p-4 result-overlay">
+                <h2 id="name-left" class="text-2xl md:text-3xl font-bold mb-1">Animal A</h2>
+                <div id="stats-left" class="hidden mt-2">
+                    <div class="flex justify-between text-sm mb-1 items-end">
+                        <span class="text-green-400 font-bold text-lg">승리 확률</span>
+                        <span id="rate-left" class="font-mono text-2xl font-bold text-white">0%</span>
+                    </div>
+                    <div class="stat-bar-bg h-4 rounded-full overflow-hidden mb-2">
+                        <div id="bar-left" class="h-full bg-green-500 transition-all duration-1000 progress-bar-striped"
+                            style="width: 0%"></div>
+                    </div>
+                    <p id="desc-left" class="text-xs text-gray-300 mt-2 leading-relaxed opacity-90"></p>
+                </div>
+            </div>
+            <!-- 선택 오버레이 -->
+            <div
+                class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-all duration-300">
+                <span
+                    class="opacity-0 group-hover:opacity-100 bg-white text-black font-bold py-2 px-6 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all shadow-lg">
+                    이 동물이 이긴다!
+                </span>
+            </div>
+        </div>
+
+        <!-- VS 중앙 텍스트 -->
+        <div class="flex flex-col items-center justify-center z-10 my-4 md:my-0 min-w-[100px]">
+            <div class="vs-text text-6xl md:text-7xl font-black italic text-red-500 tracking-tighter">VS</div>
+            <div id="result-message"
+                class="hidden mt-4 px-4 py-2 bg-gray-800 rounded-lg border border-gray-600 text-center whitespace-nowrap z-20 shadow-xl">
+                <p class="font-bold text-lg" id="result-text">결과</p>
+                <div id="prob-diff" class="text-xs text-gray-400 mt-1"></div>
+            </div>
+            <button id="next-btn"
+                class="hidden mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105"
+                onclick="nextRound()">
+                다음 매치 <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+
+        <!-- 오른쪽 동물 -->
+        <div id="card-right"
+            class="animal-card w-full md:w-5/12 aspect-square bg-gray-800 rounded-2xl overflow-hidden border border-gray-700 group"
+            onclick="selectWinner('right')">
+            <img id="img-right" src="" alt="Right Animal" class="w-full h-full object-cover bg-gray-700">
+            <div class="absolute bottom-0 left-0 right-0 p-4 result-overlay">
+                <h2 id="name-right" class="text-2xl md:text-3xl font-bold mb-1">Animal B</h2>
+                <div id="stats-right" class="hidden mt-2">
+                    <div class="flex justify-between text-sm mb-1 items-end">
+                        <span class="text-green-400 font-bold text-lg">승리 확률</span>
+                        <span id="rate-right" class="font-mono text-2xl font-bold text-white">0%</span>
+                    </div>
+                    <div class="stat-bar-bg h-4 rounded-full overflow-hidden mb-2">
+                        <div id="bar-right"
+                            class="h-full bg-green-500 transition-all duration-1000 progress-bar-striped"
+                            style="width: 0%"></div>
+                    </div>
+                    <p id="desc-right" class="text-xs text-gray-300 mt-2 leading-relaxed opacity-90"></p>
+                </div>
+            </div>
+            <!-- 선택 오버레이 -->
+            <div
+                class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-all duration-300">
+                <span
+                    class="opacity-0 group-hover:opacity-100 bg-white text-black font-bold py-2 px-6 rounded-full transform translate-y-4 group-hover:translate-y-0 transition-all shadow-lg">
+                    이 동물이 이긴다!
+                </span>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="mt-12 text-gray-500 text-sm text-center">
+        <p>※ 이미지는 빠른 로딩을 위해 데이터베이스화된 라이브러리를 사용합니다.</p>
+        <p>※ 승률은 두 동물의 전투력을 비교하여 AI 알고리즘(Sigmoid)으로 산출된 상대적 수치입니다.</p>
+    </footer>
+
+    <script>
+        // 동물 데이터베이스
+        const animals = [
+            { id: 1, name: "아프리카 코끼리", enName: "african elephant", desc: "압도적인 체급 차이. 지상에서 코끼리를 1:1로 이길 수 있는 생명체는 존재하지 않음." },
+            { id: 2, name: "사자", enName: "lion", desc: "전투 센스가 뛰어나지만, 자신보다 훨씬 거대한 상대에게는 물리적 한계가 명확함." },
+            { id: 3, name: "시베리아 호랑이", enName: "siberian tiger", desc: "앞발의 파괴력과 민첩성은 사자를 능가함. 1:1 대인전 최상위 포식자." },
+            { id: 4, name: "하마", enName: "hippopotamus", desc: "강력한 턱힘과 방어력. 분노한 하마는 악어도 반으로 접어버릴 수 있음." },
+            { id: 5, name: "코뿔소", enName: "rhinoceros", desc: "살아있는 전차. 돌진 한 방이면 트럭도 전복시킬 수 있는 파괴력을 지님." },
+            { id: 6, name: "북극곰", enName: "polar bear", desc: "가장 강력한 육식 포유류. 엄청난 맷집과 앞발 후려치기는 치명적임." },
+            { id: 7, name: "회색 곰 (그리즐리)", enName: "grizzly bear", desc: "끈질긴 생명력과 지구력. 근접 난타전에서 엄청난 위력을 발휘함." },
+            { id: 8, name: "나일 악어", enName: "nile crocodile", desc: "물속에서는 무적. 무는 힘(치악력)은 타의 추종을 불허함." },
+            { id: 9, name: "벌꿀오소리", enName: "honey badger", desc: "겁 없는 싸움꾼. 가죽이 두꺼워 급소를 물려도 반격할 수 있음." },
+            { id: 10, name: "치타", enName: "cheetah", desc: "속도는 빠르지만 전투력은 최약체. 정면 승부에서는 뼈가 부러질 위험이 큼." },
+            { id: 11, name: "늑대", enName: "grey wolf", desc: "조직력의 승부사지만 1:1 단독 전투에서는 대형 맹수에게 밀림." },
+            { id: 12, name: "고릴라", enName: "silverback gorilla", desc: "인간의 10배가 넘는 악력. 근접 격투에서 뼈를 부러뜨릴 수 있음." },
+            { id: 13, name: "하이에나", enName: "spotted hyena", desc: "뼈를 씹는 턱힘을 가졌으나, 사자나 호랑이급 맹수에게는 역부족." },
+            { id: 14, name: "표범", enName: "leopard", desc: "자신의 체중 3배를 들어 올리는 근력. 기습에는 강하나 정면 힘싸움은 불리." },
+            { id: 15, name: "독수리", enName: "golden eagle", desc: "공중의 제왕이지만 지상 동물과의 육탄전은 불가능에 가까움." },
+            { id: 16, name: "킹코브라", enName: "king cobra", desc: "한 방의 맹독이 필살기. 하지만 밟히거나 물리면 즉시 무력화됨." },
+            { id: 17, name: "기린", enName: "giraffe", desc: "뒷발차기의 위력은 사자 머리뼈도 함몰시킴. 리치 싸움에서 유리함." },
+            { id: 18, name: "캥거루", enName: "kangaroo", desc: "강력한 킥복서지만 발톱과 이빨을 가진 맹수들에겐 치명타를 입기 쉬움." },
+            { id: 19, name: "카피바라", enName: "capybara", desc: "전투력 제로. 모든 동물과 친구가 되는 것이 유일한 생존 전략." },
+            { id: 20, name: "멧돼지", enName: "wild boar", desc: "돌진력과 엄니는 위협적이나 최상위 포식자들에겐 좋은 단백질 공급원." },
+            { id: 21, name: "코모도 왕도마뱀", enName: "komodo dragon", desc: "박테리아와 독을 이용한 지구전의 명수. 한 번 물면 끝까지 추적함." },
+            { id: 22, name: "재규어", enName: "jaguar animal", desc: "두개골을 직접 부수는 턱힘. 사냥 기술이 매우 잔혹하고 효율적임." }
+        ];
+
+        let currentLeft = null;
+        let currentRight = null;
+        let isRevealed = false;
+        let score = 0;
+        let wrong = 0;
+
+        // [중요] AWS API Gateway URL을 여기에 입력하세요.
+        // 예: https://xyz.execute-api.ap-northeast-2.amazonaws.com/prod/battle
+        const API_GATEWAY_URL = "https://u1lye67102.execute-api.us-east-1.amazonaws.com/default/AnimalBattleBackend";
+
+        // 미리 로딩된 이미지 URL 생성 함수 (캐싱 효과)
+        function getStaticImageUrl(animal) {
+            return `https://loremflickr.com/500/500/wildlife,${animal.enName.replace(/\s+/g, ',')}?lock=${animal.id}`;
+        }
+
+        function initGame() {
+            if (API_GATEWAY_URL === "YOUR_API_GATEWAY_URL_HERE" || API_GATEWAY_URL === "") {
+                console.warn("API Gateway URL이 설정되지 않았습니다. 코드를 수정해주세요.");
+            }
+            nextRound();
+        }
+
+        function getRandomAnimals() {
+            let idx1 = Math.floor(Math.random() * animals.length);
+            let idx2 = Math.floor(Math.random() * animals.length);
+            while (idx1 === idx2) {
+                idx2 = Math.floor(Math.random() * animals.length);
+            }
+            return [animals[idx1], animals[idx2]];
+        }
+
+        // AI 승률 분석 요청 (Serverless Backend 호출)
+        async function fetchBattleAnalysis(animalA, animalB) {
+            if (API_GATEWAY_URL === "YOUR_API_GATEWAY_URL_HERE" || API_GATEWAY_URL === "") {
+                return {
+                    winner: 'error',
+                    rateA: 50,
+                    reason: "API Gateway URL이 설정되지 않았습니다. index.html 파일을 열어 URL을 수정해주세요."
+                };
+            }
+
+            try {
+                // 직접 Gemini를 호출하는 대신, 우리의 Lambda Backend를 호출합니다.
+                const response = await fetch(API_GATEWAY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        animalA: { name: animalA.name, desc: animalA.desc },
+                        animalB: { name: animalB.name, desc: animalB.desc }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data;
+
+            } catch (error) {
+                console.error("Analysis Error:", error);
+                return {
+                    winner: 'error',
+                    rateA: 50,
+                    reason: "서버 연결에 실패했습니다. API Gateway 설정을 확인해주세요."
+                };
+            }
+        }
+
+        function nextRound() {
+            isRevealed = false;
+            [currentLeft, currentRight] = getRandomAnimals();
+
+            // UI 초기화
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('result-message').classList.add('hidden');
+
+            resetCard('left');
+            resetCard('right');
+
+            // 이미지 및 텍스트 설정
+            document.getElementById('img-left').src = getStaticImageUrl(currentLeft);
+            document.getElementById('name-left').innerText = currentLeft.name;
+
+            document.getElementById('img-right').src = getStaticImageUrl(currentRight);
+            document.getElementById('name-right').innerText = currentRight.name;
+
+            // 설명은 결과 나올 때까지 숨김
+            document.getElementById('desc-left').innerText = "";
+            document.getElementById('desc-right').innerText = "";
+        }
+
+        function resetCard(side) {
+            const card = document.getElementById(`card-${side}`);
+            const stats = document.getElementById(`stats-${side}`);
+
+            card.classList.remove('winner-glow', 'loser-grayscale', 'pointer-events-none');
+            stats.classList.add('hidden');
+            document.getElementById(`bar-${side}`).style.width = '0%';
+        }
+
+        async function selectWinner(choice) {
+            if (isRevealed) return;
+            isRevealed = true; // 중복 클릭 방지
+
+            // 로딩 표시
+            const msgBox = document.getElementById('result-message');
+            const msgText = document.getElementById('result-text');
+            const diffText = document.getElementById('prob-diff');
+
+            msgBox.classList.remove('hidden');
+            msgBox.className = "mt-4 px-6 py-3 bg-gray-800 rounded-lg border border-gray-600 text-center z-20 shadow-xl";
+            msgText.innerText = "AI가 전투를 시뮬레이션 중입니다...";
+            msgText.className = "font-bold text-lg text-gray-200 animate-pulse";
+            diffText.innerText = "";
+
+            // AI 분석 요청
+            const analysis = await fetchBattleAnalysis(currentLeft, currentRight);
+
+            // 결과 처리
+            if (analysis.winner === 'error') {
+                msgText.innerText = analysis.reason;
+                msgText.className = "font-bold text-lg text-red-400";
+                isRevealed = false; // 에러 시 다시 클릭 가능
+                return;
+            }
+
+            const rateA = analysis.winRateA;
+            const rateB = 100 - rateA;
+
+            // 승자 판정 (rateA 기준)
+            let aiWinnerSide = rateA >= 50 ? 'left' : 'right';
+            let userWin = (choice === aiWinnerSide);
+
+            // 점수 업데이트
+            if (userWin) {
+                score++;
+                document.getElementById('score').innerText = score;
+                showResult("정답! AI 예측과 일치합니다.", analysis.reason, true);
+            } else {
+                wrong++;
+                document.getElementById('wrong').innerText = wrong;
+                showResult("오답! AI의 분석은 달랐습니다.", analysis.reason, false);
+            }
+
+            // 결과 애니메이션
+            revealStats('left', rateA, aiWinnerSide === 'left');
+            revealStats('right', rateB, aiWinnerSide === 'right');
+
+            // 카드 스타일 변경
+            if (aiWinnerSide === 'left') {
+                document.getElementById('card-left').classList.add('winner-glow');
+                document.getElementById('card-right').classList.add('loser-grayscale');
+            } else {
+                document.getElementById('card-right').classList.add('winner-glow');
+                document.getElementById('card-left').classList.add('loser-grayscale');
+            }
+
+            document.getElementById('card-left').classList.add('pointer-events-none');
+            document.getElementById('card-right').classList.add('pointer-events-none');
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function revealStats(side, rate, isWinner) {
+            const stats = document.getElementById(`stats-${side}`);
+            const rateText = document.getElementById(`rate-${side}`);
+            const bar = document.getElementById(`bar-${side}`);
+            const desc = document.getElementById(`desc-${side}`);
+
+            stats.classList.remove('hidden');
+
+            // 설명 업데이트 (기존 설명 보여줌)
+            if (side === 'left') desc.innerText = currentLeft.desc;
+            else desc.innerText = currentRight.desc;
+
+            // 숫자 카운팅 애니메이션
+            let current = 0;
+            const interval = setInterval(() => {
+                current += 1;
+                if (current >= rate) {
+                    current = rate;
+                    clearInterval(interval);
+                }
+                rateText.innerText = current + "%";
+            }, 10);
+
+            // 바 채우기
+            setTimeout(() => {
+                bar.style.width = rate + '%';
+                if (isWinner) {
+                    bar.classList.remove('bg-gray-500');
+                    bar.classList.add('bg-green-500');
+                } else {
+                    bar.classList.remove('bg-green-500');
+                    bar.classList.add('bg-gray-500');
+                }
+            }, 50);
+        }
+
+        function showResult(title, reason, isCorrect) {
+            const msgBox = document.getElementById('result-message');
+            const msgText = document.getElementById('result-text');
+            const diffText = document.getElementById('prob-diff');
+
+            msgBox.classList.remove('hidden');
+            msgText.innerText = title;
+            diffText.innerText = reason;
+            diffText.className = "text-sm text-gray-300 mt-2 max-w-md break-keep font-normal";
+
+            if (isCorrect) {
+                msgBox.className = "mt-4 px-6 py-3 bg-green-900 bg-opacity-90 rounded-lg border border-green-500 text-center animate-bounce z-20 shadow-xl";
+                msgText.className = "font-bold text-lg text-green-100";
+            } else {
+                msgBox.className = "mt-4 px-6 py-3 bg-red-900 bg-opacity-90 rounded-lg border border-red-500 text-center z-20 shadow-xl";
+                msgText.className = "font-bold text-lg text-red-100";
+            }
+        }
+
+        // 이미지 에러 핸들링
+        document.getElementById('img-left').onerror = function () { this.src = 'https://via.placeholder.com/500?text=No+Image'; }
+        document.getElementById('img-right').onerror = function () { this.src = 'https://via.placeholder.com/500?text=No+Image'; }
+
+        initGame();
+
+    </script>
+</body>
+
+</html>

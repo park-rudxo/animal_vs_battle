@@ -314,7 +314,14 @@
         let wrong = 0;
         let round = 0;
         const maxRounds = 5;
-        let apiKey = localStorage.getItem('gemini_api_key') || '';
+        // API Key 내장 (주의: 코드가 공개되면 키도 공개됩니다)
+        // API Key 내장 (주의: 코드가 공개되면 키도 공개됩니다)
+        let apiKey = "AIzaSyBAT6SbD7FrdLr_XkeUzxEUn-NjhsVdg3c";
+
+        // 구글 랭킹 API URL (여기에 배포한 URL을 넣으세요)
+        // 예: "https://script.google.com/macros/s/AKfycbx.../exec"
+        const RANKING_URL = "https://script.google.com/macros/s/AKfycbz-DeE2KS1lDUSbLtD8SoojHR1WcI8y1AOLM04uKm245qqnuUzJJbV8I6q9eyTcggMD/exec";
+
 
         // 미리 로딩된 이미지 URL 생성 함수 (로컬 이미지 사용)
         function getStaticImageUrl(animal) {
@@ -429,6 +436,10 @@
             1. **환경 변수 극대화**: '전장'이 각 동물의 전투력에 미치는 유불리를 결정적 변수로 반영하십시오. 홈그라운드 이점은 승률을 20% 이상 변동시킬 수 있습니다.
             2. **현실적 승률 산정**: 단순히 강한 동물이 무조건 9:1로 이기는 것이 아닙니다. 약자라도 환경이나 상성에 따라 변수가 발생할 수 있음을 고려하여 승률을 섬세하게 조정하십시오. (예: 6:4, 7:3 등 접전 상황 고려)
             3. **구체적 승리 시나리오**: 'reason'에는 단순히 "A가 셉니다"가 아니라, "진흙탕에 빠진 B의 다리를 A가 공격하여..."와 같이 구체적인 전투 양상과 결정타를 묘사하십시오.
+            4. **[중요] 논리적 일관성 준수**: 
+               - A의 승률이 51% 이상이면 반드시 winner는 A가 되어야 합니다.
+               - A의 승률이 49% 이하라면 반드시 winner는 B가 되어야 합니다.
+               - 승률과 승자가 모순되지 않도록 철저히 검증하십시오.
 
             [분석 대상 매치업]
             `;
@@ -446,79 +457,40 @@
             
             [응답 형식]
             다음 JSON 배열 포맷을 엄격히 준수하십시오 (마크다운 없이 JSON만 반환):
-            {
-                "data": [
-                    { 
-                        "winner": "이름 (정확한 한글명)", 
-                        "winRateA": (A의 승률, 숫자형 0~100), 
-                        "reason": "환경 변수와 결정타를 포함한 2~3문장의 생생한 전투 요약" 
-                    }
-                ]
-            }
-            
-            [치명적 오류 방지 규칙]
-            1. **승률/승자 일치 필수**: 
-               - 만약 'winner'가 **선수 A**라면, 'winRateA'는 반드시 **51 이상**이어야 합니다.
-               - 만약 'winner'가 **선수 B**라면, 'winRateA'는 반드시 **49 이하**여야 합니다.
-               - 50:50 무승부는 허용하지 않습니다.
-            2. JSON 문법 오류가 없도록 주의하십시오.
+            [
+                { 
+                    "winner": "이름 (정확한 한글명)", 
+                    "winRateA": (A의 승률, 숫자형 0~100), 
+                    "reason": "환경 변수와 결정타를 포함한 2~3문장의 생생한 전투 요약" 
+                },
+                ...
+            ]`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
-            method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errorMessage = errorData.error?.message || response.statusText;
-            throw new Error(`API 오류 (${response.status}): ${errorMessage}`);
-        }
-
-        const data = await response.json();
-        if (!data.candidates || data.candidates.length === 0) {
-            throw new Error("No candidates in response");
-        }
-
-        const text = data.candidates[0].content.parts[0].text;
-        const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        let parsedData = JSON.parse(jsonText);
-
-        // 포맷 유연성 처리 (배열이거나 {data: [...]} 형태일 수 있음)
-        let results = Array.isArray(parsedData) ? parsedData : (parsedData.data || []);
-
-        if (results.length !== maxRounds) {
-            // 갯수가 안맞으면 강제로 맞춤 (에러 방지)
-            console.warn("AI 응답 개수 불일치, 보정 시도");
-        }
-
-        // 결과 매핑 (Client-side fail-safe)
-        results.forEach((res, idx) => {
-            // 안전장치: 승자와 승률이 꼬였을 경우 강제 보정
-            if (gameData[idx]) {
-                const leftName = gameData[idx].left.name;
-                const rightName = gameData[idx].right.name;
-
-                // 승자가 A인데 승률이 낮으면 -> 승률을 51로 보정
-                if (res.winner.includes(leftName) && res.winRateA < 50) {
-                    res.winRateA = Math.floor(Math.random() * 10) + 51; // 51~60
-                    console.log(`Round ${idx + 1}: A승리 승률 보정됨`);
-                }
-                // 승자가 B인데 A승률이 높으면 -> 승률을 49로 보정
-                else if (res.winner.includes(rightName) && res.winRateA > 50) {
-                    res.winRateA = 100 - (Math.floor(Math.random() * 10) + 51); // 49 이하
-                    console.log(`Round ${idx + 1}: B승리 승률 보정됨`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.error?.message || response.statusText;
+                    throw new Error(`API 오류 (${response.status}): ${errorMessage}`);
                 }
 
-                gameData[idx].result = res;
-            }
-        });
-        return results; // Return the processed results
+                const data = await response.json();
+                if (!data.candidates || data.candidates.length === 0) {
+                    throw new Error("No candidates in response");
+                }
+
+                const text = data.candidates[0].content.parts[0].text;
+                const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                return JSON.parse(jsonText);
             } catch (error) {
-            console.error("AI Batch Analysis Error:", error);
-            throw new Error(`분석 실패: ${error.message}`);
-        }
+                console.error("AI Batch Analysis Error:", error);
+                throw new Error(`분석 실패: ${error.message}`);
+            }
         }
 
         function getRandomAnimals() {
@@ -583,38 +555,73 @@
             updateRankingBoard();
         }
 
-        function saveScore() {
+        async function saveScore() {
             const nickname = document.getElementById('nickname').value.trim() || '익명';
-            const history = JSON.parse(localStorage.getItem('battle_ranking')) || [];
 
+            // 1. Google Sheets로 전송
+            if (RANKING_URL) {
+                try {
+                    document.getElementById('ranking-list').innerHTML = "<li class='text-center text-gray-400'>랭킹 등록 중...</li>";
+                    await fetch(RANKING_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', // Google Apps Script에 데이터를 보낼 때는 no-cors가 안정적
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            name: nickname,
+                            score: score
+                        })
+                    });
+                    // no-cors는 응답을 읽을 수 없으므로 성공했다고 가정하고 갱신
+                } catch (e) {
+                    console.error("랭킹 등록 실패", e);
+                    alert("랭킹 서버 연결 실패 (로컬에만 저장됩니다)");
+                }
+            }
+
+            // 2. 로컬에도 저장 (백업용)
+            const history = JSON.parse(localStorage.getItem('battle_ranking')) || [];
             const newRecord = {
                 name: nickname,
                 score: score,
                 date: new Date().toLocaleDateString()
             };
-
             history.push(newRecord);
-            // 점수 내림차순 정렬
             history.sort((a, b) => b.score - a.score);
-            // 상위 5개만 저장
-            const top5 = history.slice(0, 5);
-
-            localStorage.setItem('battle_ranking', JSON.stringify(top5));
+            localStorage.setItem('battle_ranking', JSON.stringify(history.slice(0, 5)));
 
             // UI 변경
             document.getElementById('input-section').classList.add('hidden');
             document.getElementById('ranking-board').classList.remove('hidden');
 
+            // 랭킹판 갱신
             updateRankingBoard();
         }
 
-        function updateRankingBoard() {
+        async function updateRankingBoard() {
             const list = document.getElementById('ranking-list');
-            const history = JSON.parse(localStorage.getItem('battle_ranking')) || [];
+            list.innerHTML = "<li class='text-center text-gray-400'>랭킹 불러오는 중...</li>";
+
+            let history = [];
+
+            if (RANKING_URL) {
+                try {
+                    const res = await fetch(RANKING_URL);
+                    const data = await res.json();
+                    history = data;
+                } catch (e) {
+                    console.error("랭킹 로드 실패", e);
+                    // 실패 시 로컬 데이터 사용
+                    history = JSON.parse(localStorage.getItem('battle_ranking')) || [];
+                }
+            } else {
+                history = JSON.parse(localStorage.getItem('battle_ranking')) || [];
+            }
 
             list.innerHTML = "";
 
-            if (history.length === 0) {
+            if (!history || history.length === 0) {
                 list.innerHTML = "<li class='text-gray-500 text-center py-2'>아직 기록이 없습니다.</li>";
                 return;
             }

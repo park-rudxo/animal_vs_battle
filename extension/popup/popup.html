@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>recall-ai</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fafafa;
+      color: #111;
+    }
+
+    .header {
+      padding: 16px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 16px; font-weight: 700; }
+    .header .logout {
+      font-size: 11px;
+      color: #999;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .header .logout:hover { color: #666; }
+
+    /* Login screen */
+    .login-view {
+      padding: 40px 24px;
+      text-align: center;
+    }
+    .login-view h2 { font-size: 20px; margin-bottom: 8px; }
+    .login-view p { font-size: 13px; color: #666; margin-bottom: 20px; }
+    .login-view input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    .login-view input:focus { border-color: #3b82f6; }
+    .login-view button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .login-view button:hover { background: #2563eb; }
+
+    /* Check email */
+    .check-email {
+      padding: 40px 24px;
+      text-align: center;
+    }
+    .check-email p { font-size: 14px; color: #333; }
+    .check-email .sub { font-size: 12px; color: #999; margin-top: 8px; }
+
+    /* Save screen */
+    .save-view { padding: 20px 16px; }
+    .page-info {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      border: 1px solid #eee;
+    }
+    .page-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .page-url {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .save-btn {
+      width: 100%;
+      margin-top: 14px;
+      padding: 12px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .save-btn:hover { background: #2563eb; }
+    .save-btn:disabled { background: #93c5fd; cursor: default; }
+    .save-btn.success { background: #22c55e; }
+    .save-btn.duplicate { background: #f59e0b; }
+    .save-btn.error { background: #ef4444; }
+
+    .status-msg {
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    .open-app {
+      display: block;
+      text-align: center;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .open-app:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <!-- Login View -->
+  <div id="login-view" class="login-view" style="display:none;">
+    <h2>recall-ai</h2>
+    <p>이메일로 로그인하세요</p>
+    <input type="email" id="email-input" placeholder="email@example.com" />
+    <button id="login-btn">로그인 링크 보내기</button>
+  </div>
+
+  <!-- Check Email -->
+  <div id="check-email-view" class="check-email" style="display:none;">
+    <p>이메일을 확인해주세요</p>
+    <p class="sub">로그인 링크를 보냈습니다. 링크 클릭 후 이 팝업을 다시 열어주세요.</p>
+  </div>
+
+  <!-- Save View -->
+  <div id="save-view" style="display:none;">
+    <div class="header">
+      <h1>recall-ai</h1>
+      <button class="logout" id="logout-btn">로그아웃</button>
+    </div>
+    <div class="save-view">
+      <div class="page-info">
+        <div class="page-title" id="page-title">-</div>
+        <div class="page-url" id="page-url">-</div>
+      </div>
+      <button class="save-btn" id="save-btn">저장하기</button>
+      <div class="status-msg" id="status-msg"></div>
+      <a class="open-app" id="open-app" href="#" target="_blank">웹에서 전체 목록 보기 →</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

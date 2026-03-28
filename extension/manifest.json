@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "recall-ai",
   "description": "링크를 저장하면 AI가 알아서 정리합니다",
-  "version": "1.0.0",
-  "permissions": ["activeTab", "storage"],
+  "version": "1.0.2",
+  "permissions": ["activeTab", "storage", "identity"],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {

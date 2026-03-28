@@ -1,0 +1,30 @@
+{
+  "name": "LaterAI - 나중에 읽기",
+  "short_name": "LaterAI",
+  "description": "링크를 공유하면 AI가 정리해서 나중에 알려드려요",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "저장된 항목",
+      "url": "/",
+      "description": "저장된 콘텐츠 보기"
+    }
+  ]
+}

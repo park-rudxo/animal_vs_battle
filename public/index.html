@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="description" content="링크를 공유하면 AI가 정리해서 나중에 알려드려요">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LaterAI">
+  <title>LaterAI - 나중에 읽기</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="header-inner">
+        <a class="logo" href="/">Later<span>AI</span></a>
+        <div class="search-bar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input id="search-input" type="search" placeholder="저장한 항목 검색..." autocomplete="off">
+        </div>
+        <button id="notify-btn" class="btn-notify" title="알림 설정">🔔</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- URL Input Panel -->
+      <div class="share-panel">
+        <h2>링크 저장하기</h2>
+        <div class="url-input-row">
+          <input
+            id="url-input"
+            type="url"
+            placeholder="https://... 링크를 붙여넣으면 자동으로 저장해요"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          >
+          <button id="save-btn" class="btn-save">저장</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div id="stats" class="stats-bar"></div>
+
+      <!-- Category Filters -->
+      <div id="filters" class="filters"></div>
+
+      <!-- Items -->
+      <div id="items-grid" class="items-grid">
+        <div class="empty-state">
+          <div class="icon">⏳</div>
+          <h3>불러오는 중...</h3>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Remind Dialog -->
+  <div id="remind-overlay" class="overlay">
+    <div class="dialog">
+      <h3>🔔 언제 알림을 받을까요?</h3>
+      <div id="remind-options" class="remind-options"></div>
+      <div class="dialog-actions">
+        <button id="remind-cancel" class="btn-cancel">취소</button>
+        <button id="remind-confirm" class="btn-confirm">설정</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
